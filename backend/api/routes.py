@@ -14,7 +14,8 @@ Objectives:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, or_, func
+from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -46,6 +47,9 @@ class StoryOut(BaseModel):
     text: str
     views: int
 
+    class Config:
+        from_attributes = True
+
 class SearchResultItem(BaseModel):
     id: int
     title: str
@@ -58,18 +62,15 @@ class SearchResponse(BaseModel):
     total: int
     results: List[SearchResultItem]
 
-    class Config:
-        from_attributes = True
 
 @router.get("/stories", response_model=List[StoryOut])
 def list_stories(db: Session = Depends(get_db)):
     return db.query(Story).all()
 
-
 #receives story_id from URL + queries DB for ID
 @router.get("/stories/{story_id}", response_model = StoryOut)
 def get_story(story_id: int, db: Session = Depends(get_db)):
-    story = db.query(Story).filter(Story.id == story.id).first()
+    story = db.query(Story).filter(Story.id == story_id).first()
     if story is None:
         raise HTTPException(status_code = 404, detail = "Story not found")
     return story
@@ -94,13 +95,16 @@ def search_stories(
         Story.text.ilike(pattern),
     )
 
+    #find how many searches match
     total = db.query(func.count(Story.id)).filter(filters).scalar() or 0
 
+    #sort
     if sort == "newest":
         order_by = (Story.id.desc(),)
     else:
         order_by = (Story.views.desc(), Story.id.desc())
 
+    #db query
     rows = (
         db.query(Story)
         .filter(filters)
@@ -110,6 +114,7 @@ def search_stories(
         .all()
     )
 
+    #display result snippets until user decide to open or not
     results: List[SearchResultItem] = []
     for s in rows:
         raw = s.text or ""
@@ -123,7 +128,7 @@ def search_stories(
                 views = s.views,
             )
         )
-
+        #return typed Pydantic object
         return SearchResponse(query = query_text, total = int(total),  results = results)
     
 
