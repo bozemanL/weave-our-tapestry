@@ -11,6 +11,7 @@ def create_new_story(db: Session, payload):
     story = Story(
         title = payload.title,
         culture = payload.culture,
+        year = payload.year,
         text = payload.text,
     )
     db.add(story)

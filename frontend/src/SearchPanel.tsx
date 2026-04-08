@@ -13,7 +13,7 @@ type SearchPanelProps = {
 };
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "https://weave-our-tapestry.onrender.com";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 function formatViews(n: number): string {
   if (n >= 1000) return `${Math.floor(n / 1000)}k+`;

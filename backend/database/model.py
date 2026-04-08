@@ -18,6 +18,7 @@ class Story(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     culture = Column(String, nullable=True)
+    year = Column(Integer, nullable = True)
     text = Column(Text, nullable=False)
     views = Column(Integer, default = 0, nullable = False)
     like_count = Column(Integer, default=0) 
