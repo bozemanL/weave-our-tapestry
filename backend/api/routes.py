@@ -39,6 +39,7 @@ def get_db():
 class StoryCreate(BaseModel):
     title: str
     culture: Optional[str] = None
+    year: Optional[int] = None
     text: str
 
 class StoryOut(BaseModel):
