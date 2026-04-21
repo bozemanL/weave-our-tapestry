@@ -1,12 +1,18 @@
 import os
 import secrets
 import hashlib
+from datetime import datetime, timedelta, timezone
+
+import jwt
 from sqlalchemy.orm import Session
 
 
 from ..database.model import User
 
 PEPPER = os.getenv("PEPPER","")
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
 
 #get salt
 def generate_salt() -> str:
@@ -62,9 +68,23 @@ def authenticate_user(db: Session, email: str, password: str):
     
     return user, None
 
+# Creates a JSON web token so that we can check if a user is logged in.
+def create_access_token(user_id: int, username: str) -> str:
+    payload = {
+        "sub": str(user_id),
+        "username": username,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-
-
+# This function checks if the token is legitimate by verifying the signature matches, checks that the
+# exp hasn't passed.
+# If anything is wrong then PyJWT raises an exception.
+def verify_access_token(token: str) -> dict | None:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
 
 
 
