@@ -13,17 +13,17 @@ Objectives:
 - Add sorting parameters
 """
 
-from fastapi import APIRouter, Depends, HTTPException 
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from pydantic import BaseModel
 from typing import Optional, List
 
 from ..database.db import SessionLocal
-from ..database.model import  UserLogin, UserRegister
+from ..database.model import UserLogin, UserRegister, UserOut, TokenResponse, User
 from ..features.engagement import increment_story_views
 from ..features.stories import list_all_stories, get_story_by_id, create_new_story
-from ..features.auth import authenticate_user, register_user
+from ..features.auth import authenticate_user, register_user, create_access_token, verify_access_token
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -34,6 +34,30 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Auth dependency: pulls the Bearer token from the Authorization header,
+# verifies it, and loads the matching user. Raises 401 on any failure.
+def get_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = authorization.removeprefix("Bearer ").strip()
+    payload = verify_access_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
 
 #API contract
 class StoryCreate(BaseModel):
@@ -145,7 +169,11 @@ def search_stories(
 
 
 @router.post("/stories", response_model=StoryOut)
-def create_story(payload: StoryCreate, db: Session = Depends(get_db)):
+def create_story(
+    payload: StoryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     return create_new_story(db, payload)
 
 @router.post("/stories/{story_id}/views")
@@ -156,23 +184,37 @@ def increment_views(story_id: int, db:Session = Depends(get_db)):
         raise HTTPException(status_code = 404, detail = "Story not found")
     return {"id" : story.id, "views": story.views}
 
-@router.post("/auth/register")
+@router.post("/auth/register", response_model=TokenResponse)
 def register(payload: UserRegister, db: Session = Depends(get_db)):
     user, error = register_user(db, payload.username, payload.email, payload.password)
 
     if error:
         raise HTTPException(status_code=400, detail=error)
-    
-    return {"message": "User Registered", "user_id": user.id} 
 
-@router.post("/auth/login")
+    token = create_access_token(user.id, user.username)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserOut.model_validate(user),
+    )
+
+@router.post("/auth/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
     user, error = authenticate_user(db, payload.email, payload.password)
 
     if error:
         raise HTTPException(status_code=401, detail="Invalid information")
-        
-    return {"message": "Login Sucessfully!", "user_id": user.id} 
+
+    token = create_access_token(user.id, user.username)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserOut.model_validate(user),
+    )
+
+@router.get("/auth/me", response_model=UserOut)
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
     
 
