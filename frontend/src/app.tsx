@@ -23,6 +23,12 @@ type WinState = {
 
 type StoryWinState = WinState & { story: Story; initialX: number; initialY: number };
 
+type AuthUser = {
+  id: number;
+  username: string;
+  email: string;
+};
+
 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -195,49 +201,30 @@ function SubmitIcon() {
   );
 }
 
+function LoginIcon() {
+  return (
+    <svg viewBox="0 0 36 36" width={36} height={36} xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="16" width="20" height="14" fill="#ffcc00" stroke="#808080" strokeWidth="1"/>
+      <path d="M10 16 V11 a6 6 0 0 1 12 0 V16" fill="none" stroke="#808080" strokeWidth="2"/>
+      <circle cx="16" cy="22" r="2" fill="#808080"/>
+      <rect x="15" y="22" width="2" height="5" fill="#808080"/>
+    </svg>
+  );
+}
 
 
-// token prop is optional — when global login is implemented, pass the token in from App
-// and delete everything marked TODO below
-function SubmitStoryContent({ token: globalToken }: { token?: string }) {
 
-  // TODO: remove when global login is implemented (start)
-  const [localToken, setLocalToken] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
-  const [isAuthorized, setIsAuthorized] = useState(false);
-
-  function handleSetToken() {
-    const trimmed = tokenInput.trim();
-    if (trimmed) {
-      setLocalToken(trimmed);
-      setIsAuthorized(true);
-    }
-  }
-
-  function handleClearToken() {
-    setLocalToken("");
-    setTokenInput("");
-    setIsAuthorized(false);
-  }
-  // TODO: remove when global login is implemented (end)
-
-  // use global token if provided, otherwise fall back to the local one
-  const token = globalToken ?? localToken;
-  const isReady = globalToken ? globalToken.length > 0 : isAuthorized;
-
-  // form field state
+function SubmitStoryContent({ token, onUnauthorized }: { token: string; onUnauthorized: () => void }) {
   const [title, setTitle] = useState("");
   const [culture, setCulture] = useState("");
   const [year, setYear] = useState("");
   const [text, setText] = useState("");
 
-  // submission feedback
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  // sends story to POST /api/stories with the stored Bearer token
   async function handlePost() {
-    if (!title.trim() || !text.trim() || !isReady) return;
+    if (!title.trim() || !text.trim()) return;
     setStatus("loading");
     setErrorMsg("");
     try {
@@ -254,12 +241,15 @@ function SubmitStoryContent({ token: globalToken }: { token?: string }) {
           text: text.trim(),
         }),
       });
+      if (res.status === 401) {
+        onUnauthorized();
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setErrorMsg(data.detail || "Failed to post story.");
         setStatus("error");
       } else {
-        // clear form on success so user can submit another story
         setStatus("success");
         setTitle("");
         setCulture("");
@@ -301,8 +291,7 @@ function SubmitStoryContent({ token: globalToken }: { token?: string }) {
     minWidth: 80,
   };
 
-  // post button is only active when authorized + required fields filled
-  const canPost = isReady && title.trim().length > 0 && text.trim().length > 0 && status !== "loading";
+  const canPost = title.trim().length > 0 && text.trim().length > 0 && status !== "loading";
 
   return (
     <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -320,42 +309,6 @@ function SubmitStoryContent({ token: globalToken }: { token?: string }) {
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: 12, background: "#c0c0c0" }}>
-
-        {/* TODO: remove this entire fieldset when global login is implemented */}
-        {!globalToken && (
-          <fieldset style={{ marginBottom: 12, border: "2px groove #808080", padding: "8px 10px", background: "#c0c0c0" }}>
-            <legend style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, padding: "0 4px" }}>
-              🔑 Authorization
-            </legend>
-            {!isAuthorized ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: 11, color: "#444" }}>
-                  Paste your Bearer token (from <b>/api/auth/login</b> or <b>/api/auth/register</b>) to authorize.
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input
-                    type="password"
-                    placeholder="Paste token here..."
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSetToken()}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button style={buttonStyle} onClick={handleSetToken}>
-                    🔓 Authorize
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ color: "#006400", fontWeight: "bold" }}>✔ Authorized</span>
-                <button style={{ ...buttonStyle, minWidth: 60 }} onClick={handleClearToken}>
-                  Clear
-                </button>
-              </div>
-            )}
-          </fieldset>
-        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div>
@@ -416,16 +369,225 @@ function SubmitStoryContent({ token: globalToken }: { token?: string }) {
         borderTop: "2px inset #808080",
         display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexShrink: 0,
       }}>
-        {/* TODO: remove this hint when global login is implemented */}
-        {!globalToken && !isAuthorized && (
-          <span style={{ fontSize: 10, color: "#666", flex: 1 }}>Authorize above before posting.</span>
-        )}
         <button
           style={{ ...buttonStyle, opacity: canPost ? 1 : 0.5, cursor: canPost ? "pointer" : "not-allowed" }}
           disabled={!canPost}
           onClick={handlePost}
         >
           {status === "loading" ? "Posting..." : "Post Story"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+function AuthContent({
+  currentUser,
+  onAuth,
+  onLogout,
+}: {
+  currentUser: AuthUser | null;
+  onAuth: (token: string, user: AuthUser) => void;
+  onLogout: () => void;
+}) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleSubmit() {
+    if (!email.trim() || !password) return;
+    if (mode === "register" && !username.trim()) return;
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body =
+        mode === "login"
+          ? { email: email.trim(), password }
+          : { username: username.trim(), email: email.trim(), password };
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.detail || "Authentication failed.");
+        setStatus("error");
+        return;
+      }
+      const data = await res.json();
+      onAuth(data.access_token, data.user as AuthUser);
+    } catch {
+      setErrorMsg("Network error. Please try again.");
+      setStatus("error");
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    border: "inset 2px #808080",
+    borderStyle: "inset",
+    padding: "2px 4px",
+    background: "white",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    marginBottom: 2,
+    display: "block",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    padding: "3px 12px",
+    border: "2px outset #c0c0c0",
+    background: "#c0c0c0",
+    cursor: "pointer",
+    minWidth: 80,
+  };
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    padding: "4px 14px",
+    border: "2px outset #c0c0c0",
+    borderBottom: active ? "2px solid #c0c0c0" : "2px outset #c0c0c0",
+    background: active ? "#c0c0c0" : "#a8a8a8",
+    cursor: "pointer",
+    fontWeight: active ? "bold" : "normal",
+  });
+
+  const canSubmit =
+    status !== "loading" &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    (mode === "login" || username.trim().length > 0);
+
+  if (currentUser) {
+    return (
+      <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, height: "100%", display: "flex", flexDirection: "column" }}>
+        <div style={{
+          background: "linear-gradient(to right, #000080, #4040c0)",
+          color: "white", padding: "8px 12px",
+          display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 20 }}>👤</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: "bold" }}>Account</div>
+            <div style={{ fontSize: 10, opacity: 0.8 }}>You are signed in</div>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", padding: 16, background: "#c0c0c0", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11 }}>Signed in as:</div>
+          <div style={{ fontSize: 13, fontWeight: "bold", color: "#000080" }}>{currentUser.username}</div>
+          <div style={{ fontSize: 11, color: "#444" }}>{currentUser.email}</div>
+        </div>
+
+        <div style={{
+          background: "#c0c0c0", padding: "6px 12px",
+          borderTop: "2px inset #808080",
+          display: "flex", justifyContent: "flex-end", flexShrink: 0,
+        }}>
+          <button style={buttonStyle} onClick={onLogout}>Log Out</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, height: "100%", display: "flex", flexDirection: "column" }}>
+
+      <div style={{
+        background: "linear-gradient(to right, #000080, #4040c0)",
+        color: "white", padding: "8px 12px",
+        display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 20 }}>🔑</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: "bold" }}>Sign In</div>
+          <div style={{ fontSize: 10, opacity: 0.8 }}>Log in or create an account</div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: "auto", padding: 12, background: "#c0c0c0" }}>
+
+        <div style={{ display: "flex", gap: 0, marginBottom: 12 }}>
+          <button style={tabStyle(mode === "login")} onClick={() => { setMode("login"); setStatus("idle"); setErrorMsg(""); }}>
+            Login
+          </button>
+          <button style={tabStyle(mode === "register")} onClick={() => { setMode("register"); setStatus("idle"); setErrorMsg(""); }}>
+            Register
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {mode === "register" && (
+            <div>
+              <label style={labelStyle}>Username <span style={{ color: "#cc0000" }}>*</span></label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
+                style={inputStyle}
+                placeholder="Pick a username"
+              />
+            </div>
+          )}
+          <div>
+            <label style={labelStyle}>Email <span style={{ color: "#cc0000" }}>*</span></label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
+              style={inputStyle}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Password <span style={{ color: "#cc0000" }}>*</span></label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
+              style={inputStyle}
+              placeholder="Password"
+            />
+          </div>
+        </div>
+
+        {status === "error" && (
+          <div style={{ marginTop: 10, padding: "6px 8px", background: "#f8d7da", border: "1px solid #cc0000", color: "#cc0000", fontSize: 11 }}>
+            ✘ {errorMsg}
+          </div>
+        )}
+      </div>
+
+      <div style={{
+        background: "#c0c0c0", padding: "6px 12px",
+        borderTop: "2px inset #808080",
+        display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexShrink: 0,
+      }}>
+        <button
+          style={{ ...buttonStyle, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+        >
+          {status === "loading" ? "..." : mode === "login" ? "Log In" : "Register"}
         </button>
       </div>
     </div>
@@ -445,6 +607,18 @@ export default function App() {
   // share story window state
   const [submitWin, setSubmitWin] = useState<WinState>({ windowId: "submit", isMinimized: false });
   const [submitOpen, setSubmitOpen] = useState(false);
+
+  // login window state
+  const [authWin, setAuthWin] = useState<WinState>({ windowId: "auth", isMinimized: false });
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // global auth state, hydrated from localStorage so refresh keeps the session
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem("wot.authToken"));
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const raw = localStorage.getItem("wot.currentUser");
+    if (!raw) return null;
+    try { return JSON.parse(raw) as AuthUser; } catch { return null; }
+  });
 
   const [storyWindows, setStoryWindows] = useState<StoryWinState[]>([]);
   const [zOrder, setZOrder] = useState<string[]>([]);
@@ -511,6 +685,10 @@ export default function App() {
 
   // open, close, and minimize handlers for the share story window
   function openSubmit() {
+    if (!authToken) {
+      openAuth();
+      return;
+    }
     if (!submitOpen) {
       setSubmitOpen(true);
       setSubmitWin({ windowId: "submit", isMinimized: false });
@@ -530,6 +708,53 @@ export default function App() {
 
   function minimizeSubmit() {
     setSubmitWin((w) => ({ ...w, isMinimized: true }));
+  }
+
+
+  function openAuth() {
+    if (!authOpen) {
+      setAuthOpen(true);
+      setAuthWin({ windowId: "auth", isMinimized: false });
+      setZOrder((prev) => [...prev.filter((w) => w !== "auth"), "auth"]);
+    } else if (authWin.isMinimized) {
+      setAuthWin((w) => ({ ...w, isMinimized: false }));
+      bringToFront("auth");
+    } else {
+      bringToFront("auth");
+    }
+  }
+
+  function closeAuth() {
+    setAuthOpen(false);
+    setZOrder((prev) => prev.filter((id) => id !== "auth"));
+  }
+
+  function minimizeAuth() {
+    setAuthWin((w) => ({ ...w, isMinimized: true }));
+  }
+
+  function handleAuthSuccess(token: string, user: AuthUser) {
+    setAuthToken(token);
+    setCurrentUser(user);
+    localStorage.setItem("wot.authToken", token);
+    localStorage.setItem("wot.currentUser", JSON.stringify(user));
+    closeAuth();
+  }
+
+  function handleLogout() {
+    setAuthToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem("wot.authToken");
+    localStorage.removeItem("wot.currentUser");
+  }
+
+  // called by any authenticated fetch when the server returns 401:
+  // clear stored auth, close protected windows, and reopen Sign In so the user can re-auth
+  function handleUnauthorized() {
+    handleLogout();
+    setSubmitOpen(false);
+    setZOrder((prev) => prev.filter((id) => id !== "submit"));
+    openAuth();
   }
 
 
@@ -570,6 +795,11 @@ export default function App() {
         setSubmitWin((w) => ({ ...w, isMinimized: false }));
       }
       bringToFront("submit");
+    } else if (id === "auth") {
+      if (authWin.isMinimized) {
+        setAuthWin((w) => ({ ...w, isMinimized: false }));
+      }
+      bringToFront("auth");
     } else {
       setStoryWindows((prev) => prev.map((w) => w.windowId === id ? { ...w, isMinimized: false } : w));
       bringToFront(id);
@@ -581,6 +811,7 @@ export default function App() {
     ...(searchOpen ? [{ id: "search", title: "Weave Our Tapestry", icon: "📖", isMinimized: searchWin.isMinimized }] : []),
     ...(hometownOpen ? [{ id: "hometown", title: "Our Hometown", icon: "🏠", isMinimized: hometownWin.isMinimized }] : []),
     ...(submitOpen ? [{ id: "submit", title: "Share a Story", icon: "✏️", isMinimized: submitWin.isMinimized }] : []), // share story window entry
+    ...(authOpen ? [{ id: "auth", title: currentUser ? "Account" : "Sign In", icon: currentUser ? "👤" : "🔑", isMinimized: authWin.isMinimized }] : []),
     ...storyWindows.map((sw) => ({ id: sw.windowId, title: sw.story.title, icon: "📜", isMinimized: sw.isMinimized })),
   ];
 
@@ -606,6 +837,11 @@ export default function App() {
           label={"Share\nStory"}
           onClick={openSubmit}
           renderIcon={() => <SubmitIcon />}
+        />
+        <DesktopIcon
+          label={currentUser ? currentUser.username : "Sign In"}
+          onClick={openAuth}
+          renderIcon={() => <LoginIcon />}
         />
       </div>
 
@@ -642,7 +878,7 @@ export default function App() {
       )}
 
       
-      {submitOpen && (
+      {submitOpen && authToken && (
         <Window
           title="Share a Story"
           initialX={220} initialY={90}
@@ -653,7 +889,26 @@ export default function App() {
           zIndex={zIndexOf("submit")}
           onFocus={() => bringToFront("submit")}
         >
-          <SubmitStoryContent />
+          <SubmitStoryContent token={authToken} onUnauthorized={handleUnauthorized} />
+        </Window>
+      )}
+
+      {authOpen && (
+        <Window
+          title={currentUser ? "Account" : "Sign In"}
+          initialX={260} initialY={110}
+          initialWidth={380} initialHeight={360}
+          onClose={closeAuth}
+          onMinimize={minimizeAuth}
+          isMinimized={authWin.isMinimized}
+          zIndex={zIndexOf("auth")}
+          onFocus={() => bringToFront("auth")}
+        >
+          <AuthContent
+            currentUser={currentUser}
+            onAuth={handleAuthSuccess}
+            onLogout={handleLogout}
+          />
         </Window>
       )}
 
