@@ -13,7 +13,7 @@ Objectives:
 - Add sorting parameters
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from ..database.db import SessionLocal
-from ..database.model import UserLogin, UserRegister, UserOut, TokenResponse, User
+from ..database.model import UserLogin, UserRegister, UserOut, TokenResponse, User, Story
 from ..features.engagement import increment_story_views
 from ..features.stories import list_all_stories, get_story_by_id, create_new_story
 from ..features.auth import authenticate_user, register_user, create_access_token, verify_access_token
@@ -79,8 +79,7 @@ class StoryOut(BaseModel):
     class Config:
         from_attributes = True
 
-""" 
-TO BE REPLACED
+
 class SearchResultItem(BaseModel):
     id: int
     title: str
@@ -92,7 +91,7 @@ class SearchResponse(BaseModel):
     query: str
     total: int
     results: List[SearchResultItem]
-"""
+
 
 
 @router.get("/stories", response_model=List[StoryOut])
@@ -107,19 +106,21 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code = 404, detail = "Story not found")
     return story
 
-"""
-FIXME 
+
 #registers GET endpoint for search
 @router.get("/search", response_model = SearchResponse)
 def search_stories(
     q: str = Query(..., min_length = 1), #required at least 1 text
     limit: int  = Query(10, ge = 1, le = 100), #items per page 1-100
     offset: int = Query(0 , ge = 0), #items to skip
-    sort: str = Query("view" , pattern = "^(views|newest|relevance)$"), 
+    sort: str = Query("views" , pattern = "^(views|newest|relevance)$"), 
     db: Session = Depends(get_db), 
 ):
     
     query_text = q.strip() #removes space
+    if not query_text:
+        raise HTTPException(status_code = 400, detail = "Search query cannot be empty")
+    
     pattern = f"%{query_text}%" #matches texts
 
     #search filter => ilike: case-insensitive match in Postgres
@@ -163,9 +164,9 @@ def search_stories(
             )
         )
         #return typed Pydantic object
-        return SearchResponse(query = query_text, total = int(total),  results = results)
+    return SearchResponse(query = query_text, total = int(total),  results = results)
 
- """
+ 
 
 
 @router.post("/stories", response_model=StoryOut)

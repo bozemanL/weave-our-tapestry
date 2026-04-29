@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Story = {
   id: number;
@@ -6,6 +6,20 @@ type Story = {
   culture: string;
   text: string;
   views: number;
+};
+
+type SearchResult = {
+  id: number;
+  title: string;
+  culture?: string;
+  snippet: string;
+  views: number;
+};
+
+type SearchResponse = {
+  query: string;
+  total: number;
+  results: SearchResult[];
 };
 
 type SearchPanelProps = {
@@ -22,45 +36,44 @@ function formatViews(n: number): string {
 
 export function SearchPanel({ onOpenStory }: SearchPanelProps) {
   const [query, setQuery] = useState("");
-  const [stories, setStories] = useState<Story[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadStories() {
+    const trimmed = query.trim();
+
+    if (!trimmed) {
+      setResults([]);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    async function searchStories() {
       try {
         setLoading(true);
         setError("");
 
-        const response = await fetch(`${API_BASE}/api/stories`);
+        const response = await fetch(
+          `${API_BASE}/api/search?q=${encodeURIComponent(trimmed)}`
+        );
+
         if (!response.ok) {
-          throw new Error(`Failed to load stories: ${response.status}`);
+          throw new Error(`Failed to search stories: ${response.status}`);
         }
 
-        const data: Story[] = await response.json();
-        setStories(data);
+        const data: SearchResponse = await response.json();
+        setResults(data.results);
       } catch (err) {
         console.error(err);
-        setError("Failed to load stories.");
+        setError("Failed to search stories.");
       } finally {
         setLoading(false);
       }
     }
 
-    loadStories();
-  }, []);
-
-  const results = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    if (!q) return [];
-
-    return stories.filter((story) =>
-      [story.title, story.culture, story.text]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [query, stories]);
+    searchStories();
+  }, [query]);
 
   async function handleReadStory(storyId: number) {
     try {
@@ -78,7 +91,7 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
         method: "POST",
       });
 
-      setStories((prev) =>
+      setResults((prev) =>
         prev.map((s) =>
           s.id === storyId ? { ...s, views: s.views + 1 } : s
         )
@@ -101,7 +114,7 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
 
       {loading && (
         <div style={{ fontFamily: "'Courier Prime', monospace", padding: "8px 0", color: "#444" }}>
-          Loading stories...
+          Searching stories...
         </div>
       )}
       {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
@@ -184,7 +197,7 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
             WebkitLineClamp: 8,
             WebkitBoxOrient: "vertical",
           } as React.CSSProperties}>
-            {r.text}
+            {r.snippet}
           </div>
         </div>
       ))}
