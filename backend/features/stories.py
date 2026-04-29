@@ -7,12 +7,13 @@ def list_all_stories(db: Session):
 def get_story_by_id(db: Session, story_id: int):
     return db.query(Story).filter(Story.id == story_id).first()
 
-def create_new_story(db: Session, payload):
+def create_new_story(db: Session, payload, author: str = "N/A"):
     story = Story(
         title = payload.title,
         culture = payload.culture,
         year = payload.year,
         text = payload.text,
+        author = author,
     )
     db.add(story)
     db.commit()

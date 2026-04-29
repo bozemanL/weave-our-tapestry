@@ -6,6 +6,7 @@ type Story = {
   culture: string;
   text: string;
   views: number;
+  author: string;
 };
 
 type SearchResult = {
@@ -153,6 +154,10 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
             }}>
               {r.title}
             </span>
+
+            <div style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13, color: "#222" }}>
+              Author: <span style={{ fontStyle: "italic" }}>{r.author}</span>
+            </div>
 
             <div style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13, color: "#222" }}>
               Culture: <span style={{ textDecoration: "underline", cursor: "pointer" }}>{r.culture}</span>

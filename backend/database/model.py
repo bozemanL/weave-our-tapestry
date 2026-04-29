@@ -21,7 +21,8 @@ class Story(Base):
     year = Column(Integer, nullable = True)
     text = Column(Text, nullable=False)
     views = Column(Integer, default = 0, nullable = False)
-    like_count = Column(Integer, default=0) 
+    like_count = Column(Integer, default=0)
+    author = Column(String, nullable=False, default="N/A")
 
 
 class User(Base):

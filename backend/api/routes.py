@@ -75,6 +75,7 @@ class StoryOut(BaseModel):
     category: Optional[str] = None
     text: str
     views: int
+    author: str = "N/A"
 
     class Config:
         from_attributes = True
@@ -175,7 +176,8 @@ def create_story(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return create_new_story(db, payload)
+    # pass the logged-in user's username so it gets stored with the story
+    return create_new_story(db, payload, author=current_user.username)
 
 @router.post("/stories/{story_id}/views")
 def increment_views(story_id: int, db:Session = Depends(get_db)):
