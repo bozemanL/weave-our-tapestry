@@ -182,6 +182,258 @@ function HometownIcon() {
   );
 }
 
+function SubmitIcon() {
+  return (
+    <svg viewBox="0 0 36 36" width={36} height={36} xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="22" height="28" fill="#ffffcc" stroke="#808080" strokeWidth="1"/>
+      <line x1="8" y1="10" x2="22" y2="10" stroke="#808080" strokeWidth="1"/>
+      <line x1="8" y1="14" x2="22" y2="14" stroke="#808080" strokeWidth="1"/>
+      <line x1="8" y1="18" x2="18" y2="18" stroke="#808080" strokeWidth="1"/>
+      <polygon points="24,20 32,12 34,14 26,22" fill="#ffcc00" stroke="#808080" strokeWidth="1"/>
+      <polygon points="24,20 26,22 22,24" fill="#c0c0c0" stroke="#808080" strokeWidth="0.5"/>
+    </svg>
+  );
+}
+
+
+
+// token prop is optional — when global login is implemented, pass the token in from App
+// and delete everything marked TODO below
+function SubmitStoryContent({ token: globalToken }: { token?: string }) {
+
+  // TODO: remove when global login is implemented (start)
+  const [localToken, setLocalToken] = useState("");
+  const [tokenInput, setTokenInput] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  function handleSetToken() {
+    const trimmed = tokenInput.trim();
+    if (trimmed) {
+      setLocalToken(trimmed);
+      setIsAuthorized(true);
+    }
+  }
+
+  function handleClearToken() {
+    setLocalToken("");
+    setTokenInput("");
+    setIsAuthorized(false);
+  }
+  // TODO: remove when global login is implemented (end)
+
+  // use global token if provided, otherwise fall back to the local one
+  const token = globalToken ?? localToken;
+  const isReady = globalToken ? globalToken.length > 0 : isAuthorized;
+
+  // form field state
+  const [title, setTitle] = useState("");
+  const [culture, setCulture] = useState("");
+  const [year, setYear] = useState("");
+  const [text, setText] = useState("");
+
+  // submission feedback
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // sends story to POST /api/stories with the stored Bearer token
+  async function handlePost() {
+    if (!title.trim() || !text.trim() || !isReady) return;
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/api/stories`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          culture: culture.trim() || undefined,
+          year: year ? parseInt(year) : undefined,
+          text: text.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.detail || "Failed to post story.");
+        setStatus("error");
+      } else {
+        // clear form on success so user can submit another story
+        setStatus("success");
+        setTitle("");
+        setCulture("");
+        setYear("");
+        setText("");
+      }
+    } catch {
+      setErrorMsg("Network error. Please try again.");
+      setStatus("error");
+    }
+  }
+
+  // shared Win98-style input/button styles
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    border: "inset 2px #808080",
+    borderStyle: "inset",
+    padding: "2px 4px",
+    background: "white",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    marginBottom: 2,
+    display: "block",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    padding: "3px 12px",
+    border: "2px outset #c0c0c0",
+    background: "#c0c0c0",
+    cursor: "pointer",
+    minWidth: 80,
+  };
+
+  // post button is only active when authorized + required fields filled
+  const canPost = isReady && title.trim().length > 0 && text.trim().length > 0 && status !== "loading";
+
+  return (
+    <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, height: "100%", display: "flex", flexDirection: "column" }}>
+
+      <div style={{
+        background: "linear-gradient(to right, #000080, #4040c0)",
+        color: "white", padding: "8px 12px",
+        display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 20 }}>✏️</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: "bold" }}>Share a Story</div>
+          <div style={{ fontSize: 10, opacity: 0.8 }}>Contribute your cultural story to the tapestry</div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: "auto", padding: 12, background: "#c0c0c0" }}>
+
+        {/* TODO: remove this entire fieldset when global login is implemented */}
+        {!globalToken && (
+          <fieldset style={{ marginBottom: 12, border: "2px groove #808080", padding: "8px 10px", background: "#c0c0c0" }}>
+            <legend style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, padding: "0 4px" }}>
+              🔑 Authorization
+            </legend>
+            {!isAuthorized ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 11, color: "#444" }}>
+                  Paste your Bearer token (from <b>/api/auth/login</b> or <b>/api/auth/register</b>) to authorize.
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    type="password"
+                    placeholder="Paste token here..."
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSetToken()}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button style={buttonStyle} onClick={handleSetToken}>
+                    🔓 Authorize
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: "#006400", fontWeight: "bold" }}>✔ Authorized</span>
+                <button style={{ ...buttonStyle, minWidth: 60 }} onClick={handleClearToken}>
+                  Clear
+                </button>
+              </div>
+            )}
+          </fieldset>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div>
+            <label style={labelStyle}>Title <span style={{ color: "#cc0000" }}>*</span></label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={inputStyle}
+              placeholder="Story title"
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Culture</label>
+            <input
+              type="text"
+              value={culture}
+              onChange={(e) => setCulture(e.target.value)}
+              style={inputStyle}
+              placeholder="e.g. Japanese, Nigerian, Mexican..."
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Year</label>
+            <input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              style={{ ...inputStyle, width: 120 }}
+              placeholder="e.g. 1885"
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Story <span style={{ color: "#cc0000" }}>*</span></label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              style={{ ...inputStyle, height: 120, resize: "vertical" }}
+              placeholder="Write your story here..."
+            />
+          </div>
+        </div>
+
+        {status === "success" && (
+          <div style={{ marginTop: 10, padding: "6px 8px", background: "#d4edda", border: "1px solid #006400", color: "#006400", fontWeight: "bold", fontSize: 11 }}>
+            ✔ Story posted successfully!
+          </div>
+        )}
+        {status === "error" && (
+          <div style={{ marginTop: 10, padding: "6px 8px", background: "#f8d7da", border: "1px solid #cc0000", color: "#cc0000", fontSize: 11 }}>
+            ✘ {errorMsg}
+          </div>
+        )}
+      </div>
+
+      <div style={{
+        background: "#c0c0c0", padding: "6px 12px",
+        borderTop: "2px inset #808080",
+        display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexShrink: 0,
+      }}>
+        {/* TODO: remove this hint when global login is implemented */}
+        {!globalToken && !isAuthorized && (
+          <span style={{ fontSize: 10, color: "#666", flex: 1 }}>Authorize above before posting.</span>
+        )}
+        <button
+          style={{ ...buttonStyle, opacity: canPost ? 1 : 0.5, cursor: canPost ? "pointer" : "not-allowed" }}
+          disabled={!canPost}
+          onClick={handlePost}
+        >
+          {status === "loading" ? "Posting..." : "Post Story"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
 export default function App() {
 
   const [searchWin, setSearchWin] = useState<WinState>({ windowId: "search", isMinimized: false });
@@ -189,6 +441,10 @@ export default function App() {
 
   const [hometownWin, setHometownWin] = useState<WinState>({ windowId: "hometown", isMinimized: false });
   const [hometownOpen, setHometownOpen] = useState(false);
+
+  // share story window state
+  const [submitWin, setSubmitWin] = useState<WinState>({ windowId: "submit", isMinimized: false });
+  const [submitOpen, setSubmitOpen] = useState(false);
 
   const [storyWindows, setStoryWindows] = useState<StoryWinState[]>([]);
   const [zOrder, setZOrder] = useState<string[]>([]);
@@ -253,6 +509,30 @@ export default function App() {
   }
 
 
+  // open, close, and minimize handlers for the share story window
+  function openSubmit() {
+    if (!submitOpen) {
+      setSubmitOpen(true);
+      setSubmitWin({ windowId: "submit", isMinimized: false });
+      setZOrder((prev) => [...prev.filter((w) => w !== "submit"), "submit"]);
+    } else if (submitWin.isMinimized) {
+      setSubmitWin((w) => ({ ...w, isMinimized: false }));
+      bringToFront("submit");
+    } else {
+      bringToFront("submit");
+    }
+  }
+
+  function closeSubmit() {
+    setSubmitOpen(false);
+    setZOrder((prev) => prev.filter((id) => id !== "submit"));
+  }
+
+  function minimizeSubmit() {
+    setSubmitWin((w) => ({ ...w, isMinimized: true }));
+  }
+
+
   function handleOpenStory(story: Story) {
     const windowId = nextWindowId();
     const cascadeIndex = storyWindows.length;
@@ -285,6 +565,11 @@ export default function App() {
         setHometownWin((w) => ({ ...w, isMinimized: false }));
       }
       bringToFront("hometown");
+    } else if (id === "submit") {
+      if (submitWin.isMinimized) {
+        setSubmitWin((w) => ({ ...w, isMinimized: false }));
+      }
+      bringToFront("submit");
     } else {
       setStoryWindows((prev) => prev.map((w) => w.windowId === id ? { ...w, isMinimized: false } : w));
       bringToFront(id);
@@ -295,6 +580,7 @@ export default function App() {
   const taskWindows: TaskWindow[] = [
     ...(searchOpen ? [{ id: "search", title: "Weave Our Tapestry", icon: "📖", isMinimized: searchWin.isMinimized }] : []),
     ...(hometownOpen ? [{ id: "hometown", title: "Our Hometown", icon: "🏠", isMinimized: hometownWin.isMinimized }] : []),
+    ...(submitOpen ? [{ id: "submit", title: "Share a Story", icon: "✏️", isMinimized: submitWin.isMinimized }] : []), // share story window entry
     ...storyWindows.map((sw) => ({ id: sw.windowId, title: sw.story.title, icon: "📜", isMinimized: sw.isMinimized })),
   ];
 
@@ -315,6 +601,11 @@ export default function App() {
           label={"Our\nHometown"}
           onClick={openHometown}
           renderIcon={() => <HometownIcon />}
+        />
+        <DesktopIcon
+          label={"Share\nStory"}
+          onClick={openSubmit}
+          renderIcon={() => <SubmitIcon />}
         />
       </div>
 
@@ -351,6 +642,21 @@ export default function App() {
       )}
 
       
+      {submitOpen && (
+        <Window
+          title="Share a Story"
+          initialX={220} initialY={90}
+          initialWidth={500} initialHeight={540}
+          onClose={closeSubmit}
+          onMinimize={minimizeSubmit}
+          isMinimized={submitWin.isMinimized}
+          zIndex={zIndexOf("submit")}
+          onFocus={() => bringToFront("submit")}
+        >
+          <SubmitStoryContent />
+        </Window>
+      )}
+
       {storyWindows.map(({ windowId, story, isMinimized, initialX, initialY }) => (
         <Window
           key={windowId}
