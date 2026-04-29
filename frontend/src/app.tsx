@@ -14,6 +14,7 @@ type Story = {
   culture: string;
   text: string;
   views: number;
+  author: string;
 };
 
 type WinState = {
@@ -929,6 +930,9 @@ export default function App() {
               <h2 style={{ margin: "0 0 4px 0", fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 13, fontWeight: 'bold', lineHeight: 1.2 }}>
                 {story.title}
               </h2>
+              <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444", marginBottom: 2 }}>
+                Author: <span style={{ fontStyle: "italic" }}>{story.author}</span>
+              </div>
               <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444" }}>
                 Culture: <span style={{ textDecoration: "underline", cursor: "pointer" }}>{story.culture}</span>
               </div>
