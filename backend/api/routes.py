@@ -13,7 +13,8 @@ Objectives:
 - Add sorting parameters
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from pydantic import BaseModel
@@ -35,16 +36,15 @@ def get_db():
     finally:
         db.close()
 
+bearer_scheme = HTTPBearer()
+
 # Auth dependency: pulls the Bearer token from the Authorization header,
 # verifies it, and loads the matching user. Raises 401 on any failure.
 def get_current_user(
-    authorization: Optional[str] = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    token = authorization.removeprefix("Bearer ").strip()
+    token = credentials.credentials
     payload = verify_access_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
