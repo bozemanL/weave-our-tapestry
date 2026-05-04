@@ -8,9 +8,9 @@ File Description: Defines what a “Story” looks like in the database - bluepr
 """
 
 
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, DateTime
 from .db import Base
-from pydantic import BaseModel  
+from pydantic import BaseModel
 
 class Story(Base):
     __tablename__ = "stories"
@@ -33,6 +33,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_salt =  Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
+    failed_login_attempts = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
 
 class UserRegister(BaseModel):
     username: str

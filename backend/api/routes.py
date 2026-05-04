@@ -203,7 +203,17 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/auth/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    user, error = authenticate_user(db, payload.email, payload.password)
+    user, error, retry_after = authenticate_user(db, payload.email, payload.password)
+
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": f"Too many failed login attempts. Try again in {retry_after} seconds.",
+                "retry_after": retry_after,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
 
     if error:
         raise HTTPException(status_code=401, detail="Invalid information")

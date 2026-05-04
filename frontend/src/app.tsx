@@ -399,10 +399,46 @@ function AuthContent({
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(() => {
+    const stored = localStorage.getItem("wot_login_lockout_until");
+    if (!stored) return null;
+    const ts = Number(stored);
+    if (!Number.isFinite(ts) || ts <= Date.now()) {
+      localStorage.removeItem("wot_login_lockout_until");
+      return null;
+    }
+    return ts;
+  });
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (lockoutUntil === null) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= lockoutUntil) {
+        setLockoutUntil(null);
+        localStorage.removeItem("wot_login_lockout_until");
+        clearInterval(id);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockoutUntil]);
+
+  const lockoutRemainingSec =
+    lockoutUntil === null ? 0 : Math.max(0, Math.ceil((lockoutUntil - now) / 1000));
+  const isLockedOut = lockoutRemainingSec > 0;
+
+  function formatCountdown(totalSec: number): string {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
 
   async function handleSubmit() {
     if (!email.trim() || !password) return;
     if (mode === "register" && !username.trim()) return;
+    if (isLockedOut) return;
     setStatus("loading");
     setErrorMsg("");
     try {
@@ -418,7 +454,26 @@ function AuthContent({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setErrorMsg(data.detail || "Authentication failed.");
+        const detail = data.detail;
+        if (
+          res.status === 429 &&
+          detail &&
+          typeof detail === "object" &&
+          typeof detail.retry_after === "number"
+        ) {
+          const t = Date.now();
+          const until = t + detail.retry_after * 1000;
+          setNow(t);
+          setLockoutUntil(until);
+          localStorage.setItem("wot_login_lockout_until", String(until));
+          setErrorMsg(detail.message || "Too many failed login attempts.");
+        } else if (typeof detail === "string") {
+          setErrorMsg(detail);
+        } else if (detail && typeof detail === "object" && typeof detail.message === "string") {
+          setErrorMsg(detail.message);
+        } else {
+          setErrorMsg("Authentication failed.");
+        }
         setStatus("error");
         return;
       }
@@ -471,6 +526,7 @@ function AuthContent({
 
   const canSubmit =
     status !== "loading" &&
+    !isLockedOut &&
     email.trim().length > 0 &&
     password.length > 0 &&
     (mode === "login" || username.trim().length > 0);
@@ -571,9 +627,11 @@ function AuthContent({
           </div>
         </div>
 
-        {status === "error" && (
+        {(status === "error" || isLockedOut) && (
           <div style={{ marginTop: 10, padding: "6px 8px", background: "#f8d7da", border: "1px solid #cc0000", color: "#cc0000", fontSize: 11 }}>
-            ✘ {errorMsg}
+            ✘ {isLockedOut
+              ? `Too many failed login attempts. Try again in ${formatCountdown(lockoutRemainingSec)}.`
+              : errorMsg}
           </div>
         )}
       </div>
@@ -588,7 +646,13 @@ function AuthContent({
           disabled={!canSubmit}
           onClick={handleSubmit}
         >
-          {status === "loading" ? "..." : mode === "login" ? "Log In" : "Register"}
+          {isLockedOut
+            ? `Wait ${formatCountdown(lockoutRemainingSec)}`
+            : status === "loading"
+              ? "..."
+              : mode === "login"
+                ? "Log In"
+                : "Register"}
         </button>
       </div>
     </div>
