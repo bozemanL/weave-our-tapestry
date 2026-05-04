@@ -81,7 +81,7 @@ function HometownContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("https://weave-our-tapestry.onrender.com/api/stories")
+    fetch(`${API_BASE}/api/stories`)
       .then(async (r) => {
 
         const buffer = await r.arrayBuffer();
