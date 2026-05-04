@@ -45,12 +45,35 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
   useEffect(() => {
     const trimmed = query.trim();
 
+    // no query, load all stories sorted by ID as the default view
     if (!trimmed) {
-      setResults([]);
-      setLoading(false);
-      setError("");
+      async function loadAll() {
+        try {
+          setLoading(true);
+          setError("");
+          const response = await fetch(`${API_BASE}/api/stories`);
+          if (!response.ok) throw new Error(`Failed to load stories: ${response.status}`);
+          const data: Story[] = await response.json();
+          const sorted = [...data].sort((a, b) => a.id - b.id);
+          setResults(sorted.map((s) => ({
+            id: s.id,
+            title: s.title,
+            culture: s.culture,
+            views: s.views,
+            author: s.author,
+            snippet: s.text.slice(0, 160).trim() + (s.text.length > 160 ? "..." : ""),
+          })));
+        } catch (err) {
+          console.error(err);
+          setError("Failed to load stories.");
+        } finally {
+          setLoading(false);
+        }
+      }
+      loadAll();
       return;
     }
+
     async function searchStories() {
       try {
         setLoading(true);
@@ -134,7 +157,7 @@ export function SearchPanel({ onOpenStory }: SearchPanelProps) {
             boxShadow: "inset 1px 1px 0 #fff, inset -1px -1px 0 #808080, 0 1px 3px rgba(0,0,0,0.15)",
           }}
         >
-          {/* Left column — meta */}
+          {/* Left column meta */}
           <div style={{
             minWidth: 210,
             maxWidth: 240,
