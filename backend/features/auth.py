@@ -61,7 +61,7 @@ def authenticate_user(db: Session, email: str, password: str):
     #check if user email exists
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        return None, "Failed to authenticate", None
+        return None, "Failed to authenticate", None, None
 
     now = datetime.now(timezone.utc)
 
@@ -72,7 +72,7 @@ def authenticate_user(db: Session, email: str, password: str):
             locked_until = locked_until.replace(tzinfo=timezone.utc)
         if locked_until > now:
             remaining = int((locked_until - now).total_seconds())
-            return None, "Account temporarily locked", max(remaining, 1)
+            return None, "Account temporarily locked", max(remaining, 1), None
         # Lockout window has expired — reset the counter and continue.
         user.locked_until = None
         user.failed_login_attempts = 0
@@ -85,16 +85,17 @@ def authenticate_user(db: Session, email: str, password: str):
         if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
             user.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
             db.commit()
-            return None, "Account temporarily locked", LOCKOUT_MINUTES * 60
+            return None, "Account temporarily locked", LOCKOUT_MINUTES * 60, None
+        attempts_remaining = MAX_FAILED_ATTEMPTS - user.failed_login_attempts
         db.commit()
-        return None, "Failed to authenticate", None
+        return None, "Failed to authenticate", None, attempts_remaining
 
     if user.failed_login_attempts or user.locked_until is not None:
         user.failed_login_attempts = 0
         user.locked_until = None
         db.commit()
 
-    return user, None, None
+    return user, None, None, None
 
 # Creates a JSON web token so that we can check if a user is logged in.
 def create_access_token(user_id: int, username: str) -> str:
