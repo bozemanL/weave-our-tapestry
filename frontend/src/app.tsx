@@ -56,7 +56,7 @@ function DesktopIcon({ label, onClick, renderIcon }: { label: string; onClick: (
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-        padding: "4px", width: 72, cursor: "default", userSelect: "none",
+        padding: "4px", width: 108, cursor: "default", userSelect: "none",
         background: selected ? "rgba(0,0,128,0.4)" : "transparent",
         border: `1px solid ${selected ? "rgba(255,255,255,0.5)" : "transparent"}`,
         color: "white",
@@ -188,7 +188,7 @@ function HometownContent({ onOpenStory }: { onOpenStory: (story: Story) => void 
 
 function HometownIcon() {
   return (
-    <svg viewBox="0 0 36 36" width={36} height={36} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 36 36" width={54} height={54} xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="16" width="20" height="14" fill="#c08060" stroke="#808080" strokeWidth="1"/>
       <polygon points="4,18 18,6 32,18" fill="#c04000" stroke="#808080" strokeWidth="1"/>
       <rect x="14" y="22" width="8" height="8" fill="#000080"/>
@@ -199,7 +199,7 @@ function HometownIcon() {
 
 function SubmitIcon() {
   return (
-    <svg viewBox="0 0 36 36" width={36} height={36} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 36 36" width={54} height={54} xmlns="http://www.w3.org/2000/svg">
       <rect x="4" y="4" width="22" height="28" fill="#ffffcc" stroke="#808080" strokeWidth="1"/>
       <line x1="8" y1="10" x2="22" y2="10" stroke="#808080" strokeWidth="1"/>
       <line x1="8" y1="14" x2="22" y2="14" stroke="#808080" strokeWidth="1"/>
@@ -212,7 +212,7 @@ function SubmitIcon() {
 
 function LoginIcon() {
   return (
-    <svg viewBox="0 0 36 36" width={36} height={36} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 36 36" width={54} height={54} xmlns="http://www.w3.org/2000/svg">
       <rect x="6" y="16" width="20" height="14" fill="#ffcc00" stroke="#808080" strokeWidth="1"/>
       <path d="M10 16 V11 a6 6 0 0 1 12 0 V16" fill="none" stroke="#808080" strokeWidth="2"/>
       <circle cx="16" cy="22" r="2" fill="#808080"/>
@@ -1014,11 +1014,11 @@ export default function App() {
     <div style={{ width: "100vw", height: "100vh", paddingBottom: 48, boxSizing: "border-box", position: "relative" }}>
 
       
-      <div style={{ position: "absolute", top: 20, left: 20, display: "flex", flexDirection: "column", gap: 16, zIndex: 1 }}>
+      <div style={{ position: "absolute", top: 20, left: 20, display: "flex", flexDirection: "column", gap: 24, zIndex: 1 }}>
         <DesktopIcon
           label="WOT"
           onClick={openSearch}
-          renderIcon={() => <WotIcon size={36} />}
+          renderIcon={() => <WotIcon size={54} />}
         />
         <DesktopIcon
           label={"Our\nHometown"}
