@@ -68,6 +68,53 @@ Response:
 
 ---
 
+## GET /stories/{id}/comments
+
+Returns comments for a story, oldest first. No auth required.
+
+Response:
+[
+  {
+    "id": number,
+    "story_id": number,
+    "text": string,
+    "author": string,
+    "created_at": string
+  }
+]
+
+Error (404):
+{
+  "detail": "Story not found"
+}
+
+---
+
+## POST /stories/{id}/comments
+
+Posts a comment on a story. Requires `Authorization: Bearer <token>`.
+
+Request:
+{
+  "text": string
+}
+
+Response (201):
+{
+  "id": number,
+  "story_id": number,
+  "text": string,
+  "author": string,
+  "created_at": string
+}
+
+Errors:
+- 400: `{"detail": "Comment text is required"}` (empty / whitespace-only text)
+- 401: invalid or missing token
+- 404: `{"detail": "Story not found"}`
+
+---
+
 ## GET /search
 
 Query Params:

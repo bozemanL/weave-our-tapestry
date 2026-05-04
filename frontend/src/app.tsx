@@ -30,6 +30,14 @@ type AuthUser = {
   email: string;
 };
 
+type Comment = {
+  id: number;
+  story_id: number;
+  text: string;
+  author: string;
+  created_at: string;
+};
+
 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -669,9 +677,80 @@ function AuthContent({
 
 
 
-function StoryWindowContent({ story }: { story: Story }) {
+function StoryWindowContent({
+  story,
+  token,
+  onUnauthorized,
+  onRequireAuth,
+}: {
+  story: Story;
+  token: string | null;
+  onUnauthorized: () => void;
+  onRequireAuth: () => void;
+}) {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState("");
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsStatus, setCommentsStatus] = useState<"idle" | "loading" | "error">("loading");
+  const [commentDraft, setCommentDraft] = useState("");
+  const [postStatus, setPostStatus] = useState<"idle" | "posting" | "error">("idle");
+  const [postError, setPostError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/api/stories/${story.id}/comments`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data: Comment[]) => {
+        if (cancelled) return;
+        setComments(data);
+        setCommentsStatus("idle");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCommentsStatus("error");
+      });
+    return () => { cancelled = true; };
+  }, [story.id]);
+
+  async function handlePostComment() {
+    const text = commentDraft.trim();
+    if (!text) return;
+    if (!token) {
+      onRequireAuth();
+      return;
+    }
+    setPostStatus("posting");
+    setPostError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/stories/${story.id}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (res.status === 401) {
+        onUnauthorized();
+        setPostStatus("idle");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPostError(data.detail || "Failed to post comment.");
+        setPostStatus("error");
+        return;
+      }
+      const created: Comment = await res.json();
+      setComments((prev) => [...prev, created]);
+      setCommentDraft("");
+      setPostStatus("idle");
+    } catch {
+      setPostError("Network error. Please try again.");
+      setPostStatus("error");
+    }
+  }
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -724,11 +803,67 @@ function StoryWindowContent({ story }: { story: Story }) {
 
         <div>
           <h3 style={{ fontSize: 12 }}>Comments</h3>
-          <textarea
-            placeholder="Write a comment..."
-            style={{ width: "100%", minHeight: 60, marginBottom: 8, fontSize: 11 }}
-          />
-          <button>Post Comment</button>
+
+          {commentsStatus === "loading" && (
+            <div style={{ fontSize: 11, color: "#444", marginBottom: 8 }}>Loading comments...</div>
+          )}
+          {commentsStatus === "error" && (
+            <div style={{ fontSize: 11, color: "#a00", marginBottom: 8 }}>Could not load comments.</div>
+          )}
+          {commentsStatus === "idle" && comments.length === 0 && (
+            <div style={{ fontSize: 11, color: "#666", fontStyle: "italic", marginBottom: 8 }}>
+              No comments yet. Be the first.
+            </div>
+          )}
+
+          {comments.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+              {comments.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    border: "1px inset #808080",
+                    background: "white",
+                    padding: "6px 8px",
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, color: "#333" }}>
+                    <span style={{ fontWeight: "bold" }}>{c.author}</span>
+                    <span style={{ color: "#666" }}>{new Date(c.created_at).toLocaleString()}</span>
+                  </div>
+                  <div style={{ whiteSpace: "pre-wrap", color: "#111" }}>{c.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {token ? (
+            <>
+              <textarea
+                placeholder="Write a comment..."
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                disabled={postStatus === "posting"}
+                style={{ ...inputStyle, minHeight: 60, marginBottom: 6, resize: "vertical" }}
+              />
+              {postStatus === "error" && (
+                <div style={{ fontSize: 11, color: "#a00", marginBottom: 6 }}>{postError}</div>
+              )}
+              <button
+                style={{ ...buttonStyle, opacity: commentDraft.trim() && postStatus !== "posting" ? 1 : 0.6 }}
+                disabled={!commentDraft.trim() || postStatus === "posting"}
+                onClick={handlePostComment}
+              >
+                {postStatus === "posting" ? "Posting..." : "Post Comment"}
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 11, color: "#444" }}>
+              <button style={buttonStyle} onClick={onRequireAuth}>Log in to comment</button>
+            </div>
+          )}
         </div>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 0 0 0", marginTop: "auto" }}>
@@ -1116,7 +1251,12 @@ export default function App() {
           zIndex={zIndexOf(windowId)}
           onFocus={() => bringToFront(windowId)}
         >
-          <StoryWindowContent story={story} />
+          <StoryWindowContent
+            story={story}
+            token={authToken}
+            onUnauthorized={handleUnauthorized}
+            onRequireAuth={openAuth}
+          />
         </Window>
       ))}
 

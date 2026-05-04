@@ -21,9 +21,13 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from ..database.db import SessionLocal
-from ..database.model import UserLogin, UserRegister, UserOut, TokenResponse, User, Story
+from ..database.model import (
+    UserLogin, UserRegister, UserOut, TokenResponse, User, Story,
+    CommentCreate, CommentOut,
+)
 from ..features.engagement import increment_story_views
 from ..features.stories import list_all_stories, get_story_by_id, create_new_story
+from ..features.comments import list_comments_for_story, create_comment
 from ..features.auth import authenticate_user, register_user, create_access_token, verify_access_token
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -186,6 +190,54 @@ def increment_views(story_id: int, db:Session = Depends(get_db)):
     if story is None:
         raise HTTPException(status_code = 404, detail = "Story not found")
     return {"id" : story.id, "views": story.views}
+
+
+@router.get("/stories/{story_id}/comments", response_model=List[CommentOut])
+def list_story_comments(story_id: int, db: Session = Depends(get_db)):
+    if get_story_by_id(db, story_id) is None:
+        raise HTTPException(status_code=404, detail="Story not found")
+    rows = list_comments_for_story(db, story_id)
+    return [
+        CommentOut(
+            id=r.id,
+            story_id=r.story_id,
+            text=r.text,
+            author=r.user.username,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.post(
+    "/stories/{story_id}/comments",
+    response_model=CommentOut,
+    status_code=201,
+)
+def post_story_comment(
+    story_id: int,
+    payload: CommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if get_story_by_id(db, story_id) is None:
+        raise HTTPException(status_code=404, detail="Story not found")
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment text is required")
+    comment = create_comment(
+        db,
+        story_id=story_id,
+        user_id=current_user.id,
+        text=text,
+    )
+    return CommentOut(
+        id=comment.id,
+        story_id=comment.story_id,
+        text=comment.text,
+        author=current_user.username,
+        created_at=comment.created_at,
+    )
 
 @router.post("/auth/register", response_model=TokenResponse)
 def register(payload: UserRegister, db: Session = Depends(get_db)):

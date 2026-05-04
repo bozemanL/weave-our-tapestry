@@ -8,7 +8,11 @@ File Description: Defines what a “Story” looks like in the database - bluepr
 """
 
 
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from .db import Base
 from pydantic import BaseModel
 
@@ -36,6 +40,22 @@ class User(Base):
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    story_id = Column(Integer, ForeignKey("stories.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    user = relationship("User")
+
 class UserRegister(BaseModel):
     username: str
     email: str
@@ -57,6 +77,20 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     user: UserOut
+
+
+class CommentCreate(BaseModel):
+    text: str
+
+class CommentOut(BaseModel):
+    id: int
+    story_id: int
+    text: str
+    author: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 
