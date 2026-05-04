@@ -14,6 +14,9 @@ JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
+MAX_FAILED_ATTEMPTS = 3
+LOCKOUT_MINUTES = 2
+
 #get salt
 def generate_salt() -> str:
     return secrets.token_hex(16)
@@ -58,15 +61,40 @@ def authenticate_user(db: Session, email: str, password: str):
     #check if user email exists
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        return None, "Failed to authenticate"
-    
-    #check if hashed password
+        return None, "Failed to authenticate", None
+
+    now = datetime.now(timezone.utc)
+
+    # Reject without checking the password if the account is currently locked.
+    if user.locked_until is not None:
+        locked_until = user.locked_until
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        if locked_until > now:
+            remaining = int((locked_until - now).total_seconds())
+            return None, "Account temporarily locked", max(remaining, 1)
+        # Lockout window has expired — reset the counter and continue.
+        user.locked_until = None
+        user.failed_login_attempts = 0
+        db.commit()
+
     attempted_hash = hash_password_sha256(password, user.password_salt)
 
     if attempted_hash != user.hashed_password:
-        return None, "Failed to authenticate"
-    
-    return user, None
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
+            user.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+            db.commit()
+            return None, "Account temporarily locked", LOCKOUT_MINUTES * 60
+        db.commit()
+        return None, "Failed to authenticate", None
+
+    if user.failed_login_attempts or user.locked_until is not None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+
+    return user, None, None
 
 # Creates a JSON web token so that we can check if a user is logged in.
 def create_access_token(user_id: int, username: str) -> str:
