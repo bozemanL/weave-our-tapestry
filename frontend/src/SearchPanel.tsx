@@ -15,6 +15,7 @@ type SearchResult = {
   culture?: string;
   snippet: string;
   views: number;
+  author?: string;
 };
 
 type SearchResponse = {

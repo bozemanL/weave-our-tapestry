@@ -661,6 +661,112 @@ function AuthContent({
 
 
 
+function StoryWindowContent({ story }: { story: Story }) {
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportText, setReportText] = useState("");
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    border: "inset 2px #808080",
+    borderStyle: "inset",
+    padding: "4px",
+    background: "white",
+    resize: "vertical",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+    fontSize: 11,
+    padding: "3px 12px",
+    border: "2px outset #c0c0c0",
+    background: "#c0c0c0",
+    cursor: "pointer",
+    minWidth: 80,
+  };
+
+  return (
+    // position: relative so the report overlay can be positioned absolutely inside
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+        <div>
+          <h2 style={{ margin: "0 0 4px 0", fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 13, fontWeight: "bold", lineHeight: 1.2 }}>
+            {story.title}
+          </h2>
+          <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444", marginBottom: 2 }}>
+            Author: <span style={{ fontStyle: "italic" }}>{story.author}</span>
+          </div>
+          <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444" }}>
+            Culture: <span style={{ textDecoration: "underline", cursor: "pointer" }}>{story.culture}</span>
+          </div>
+        </div>
+        <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#333", display: "flex", alignItems: "center", gap: 6, paddingTop: 4 }}>
+          <span>{formatViews(story.views)}</span><span>👁</span>
+        </div>
+      </div>
+      <hr style={{ border: "none", borderTop: "2px solid #888", margin: "10px 0 14px 0" }} />
+      <div style={{ flex: 1, overflow: "auto", fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, lineHeight: 1.6, color: "#111", whiteSpace: "pre-wrap" }}>
+        {story.text}
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 0 0 0" }}>
+        <button style={buttonStyle} onClick={() => setReportOpen(true)}>
+          Report
+        </button>
+      </div>
+
+      {/* report form overlay — covers the story window when open */}
+      {reportOpen && (
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10,
+        }}>
+          <div style={{ background: "#c0c0c0", border: "2px outset #c0c0c0", width: 320 }}>
+
+            {/* dialog title bar */}
+            <div style={{
+              background: "linear-gradient(to right, #000080, #4040c0)",
+              color: "white", padding: "4px 8px",
+              fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif",
+              fontSize: 11, fontWeight: "bold",
+            }}>
+              Report This Story
+            </div>
+
+            {/* reason text box */}
+            <div style={{ padding: 12 }}>
+              <label style={{ fontFamily: "'MS Sans Serif', Tahoma, Arial, sans-serif", fontSize: 11, display: "block", marginBottom: 4 }}>
+                Reason:
+              </label>
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                style={{ ...inputStyle, height: 100 }}
+                placeholder="Describe why you are reporting this story..."
+              />
+            </div>
+
+            {/* submit and cancel buttons */}
+            <div style={{ padding: "0 12px 12px 12px", display: "flex", justifyContent: "flex-end", gap: 6 }}>
+              <button style={buttonStyle} onClick={() => { setReportOpen(false); setReportText(""); }}>
+                Cancel
+              </button>
+              <button style={buttonStyle} onClick={() => {}}>
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 export default function App() {
 
   const [searchWin, setSearchWin] = useState<WinState>({ windowId: "search", isMinimized: false });
