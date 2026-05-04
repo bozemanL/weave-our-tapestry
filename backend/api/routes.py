@@ -203,7 +203,7 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/auth/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    user, error, retry_after = authenticate_user(db, payload.email, payload.password)
+    user, error, retry_after, attempts_remaining = authenticate_user(db, payload.email, payload.password)
 
     if retry_after is not None:
         raise HTTPException(
@@ -216,6 +216,15 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         )
 
     if error:
+        if attempts_remaining is not None:
+            attempt_word = "attempt" if attempts_remaining == 1 else "attempts"
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "message": f"Invalid information. {attempts_remaining} {attempt_word} remaining.",
+                    "attempts_remaining": attempts_remaining,
+                },
+            )
         raise HTTPException(status_code=401, detail="Invalid information")
 
     token = create_access_token(user.id, user.username)
