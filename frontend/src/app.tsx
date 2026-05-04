@@ -76,9 +76,14 @@ function DesktopIcon({ label, onClick, renderIcon }: { label: string; onClick: (
 
 
 
-function HometownContent() {
+function HometownContent({ onOpenStory }: { onOpenStory: (story: Story) => void }) {
   const [topStories, setTopStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+
+  async function handleTitleClick(story: Story) {
+    onOpenStory(story);
+    await fetch(`${API_BASE}/api/stories/${story.id}/views`, { method: "POST" });
+  }
 
   useEffect(() => {
     fetch(`${API_BASE}/api/stories`)
@@ -139,7 +144,10 @@ function HometownContent() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: "bold", color: "#000080", fontSize: 12, marginBottom: 2 }}>
+              <div
+                style={{ fontWeight: "bold", color: "#000080", fontSize: 12, marginBottom: 2, cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => handleTitleClick(story)}
+              >
                 {story.title}
               </div>
               <div style={{ color: "#555", fontSize: 10, marginBottom: 4 }}>
@@ -1057,7 +1065,7 @@ export default function App() {
           zIndex={zIndexOf("hometown")}
           onFocus={() => bringToFront("hometown")}
         >
-          <HometownContent />
+          <HometownContent onOpenStory={handleOpenStory} />
         </Window>
       )}
 
