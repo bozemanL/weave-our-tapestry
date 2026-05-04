@@ -942,9 +942,45 @@ export default function App() {
             </div>
           </div>
           <hr style={{ border: "none", borderTop: "2px solid #888", margin: "10px 0 14px 0" }} />
-          <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, lineHeight: 1.6, color: "#111", whiteSpace: "pre-wrap" }}>
-            {story.text}
-          </div>
+          <div
+  style={{
+    maxHeight: "300px",
+    overflowY: "auto",
+    paddingRight: 6,
+  }}
+>
+  <div
+    style={{
+      fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif",
+      fontSize: 11,
+      lineHeight: 1.6,
+      color: "#111",
+      whiteSpace: "pre-wrap",
+    }}
+  >
+    {story.text}
+  </div>
+
+  <hr style={{ margin: "16px 0" }} />
+
+  <div>
+    <h3 style={{ fontSize: 12 }}>Comments</h3>
+
+    <textarea
+      placeholder="Write a comment..."
+      style={{
+        width: "100%",
+        minHeight: 60,
+        marginBottom: 8,
+        fontSize: 11,
+      }}
+    />
+
+    <button>
+      Post Comment
+    </button>
+  </div>
+</div>
         </Window>
       ))}
 
