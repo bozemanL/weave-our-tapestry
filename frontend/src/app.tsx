@@ -775,7 +775,7 @@ function StoryWindowContent({ story }: { story: Story }) {
               <button style={buttonStyle} onClick={() => { setReportOpen(false); setReportText(""); }}>
                 Cancel
               </button>
-              <button style={buttonStyle} onClick={() => {}}>
+              <button style={buttonStyle} onClick={() => { setReportOpen(false); setReportText(""); }}>
                 Submit
               </button>
             </div>
