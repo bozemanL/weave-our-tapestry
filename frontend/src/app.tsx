@@ -707,10 +707,23 @@ function StoryWindowContent({ story }: { story: Story }) {
         </div>
       </div>
       <hr style={{ border: "none", borderTop: "2px solid #888", margin: "10px 0 14px 0" }} />
-      <div style={{ flex: 1, overflow: "auto", fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, lineHeight: 1.6, color: "#111", whiteSpace: "pre-wrap" }}>
-        {story.text}
+      <div style={{ maxHeight: "300px", overflowY: "auto", paddingRight: 6 }}>
+        <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, lineHeight: 1.6, color: "#111", whiteSpace: "pre-wrap" }}>
+          {story.text}
+        </div>
+
+        <hr style={{ margin: "16px 0" }} />
+
+        <div>
+          <h3 style={{ fontSize: 12 }}>Comments</h3>
+          <textarea
+            placeholder="Write a comment..."
+            style={{ width: "100%", minHeight: 60, marginBottom: 8, fontSize: 11 }}
+          />
+          <button>Post Comment</button>
+        </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 0 0 0" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 0 0 0", marginTop: "auto" }}>
         <button style={buttonStyle} onClick={() => setReportOpen(true)}>
           Report
         </button>
@@ -1095,62 +1108,7 @@ export default function App() {
           zIndex={zIndexOf(windowId)}
           onFocus={() => bringToFront(windowId)}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-            <div>
-              <h2 style={{ margin: "0 0 4px 0", fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 13, fontWeight: 'bold', lineHeight: 1.2 }}>
-                {story.title}
-              </h2>
-              <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444", marginBottom: 2 }}>
-                Author: <span style={{ fontStyle: "italic" }}>{story.author}</span>
-              </div>
-              <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#444" }}>
-                Culture: <span style={{ textDecoration: "underline", cursor: "pointer" }}>{story.culture}</span>
-              </div>
-            </div>
-            <div style={{ fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif", fontSize: 11, color: "#333", display: "flex", alignItems: "center", gap: 6, paddingTop: 4 }}>
-              <span>{formatViews(story.views)}</span><span>👁</span>
-            </div>
-          </div>
-          <hr style={{ border: "none", borderTop: "2px solid #888", margin: "10px 0 14px 0" }} />
-          <div
-  style={{
-    maxHeight: "300px",
-    overflowY: "auto",
-    paddingRight: 6,
-  }}
->
-  <div
-    style={{
-      fontFamily: "'MS Sans Serif', Tahoma, Geneva, Arial, sans-serif",
-      fontSize: 11,
-      lineHeight: 1.6,
-      color: "#111",
-      whiteSpace: "pre-wrap",
-    }}
-  >
-    {story.text}
-  </div>
-
-  <hr style={{ margin: "16px 0" }} />
-
-  <div>
-    <h3 style={{ fontSize: 12 }}>Comments</h3>
-
-    <textarea
-      placeholder="Write a comment..."
-      style={{
-        width: "100%",
-        minHeight: 60,
-        marginBottom: 8,
-        fontSize: 11,
-      }}
-    />
-
-    <button>
-      Post Comment
-    </button>
-  </div>
-</div>
+          <StoryWindowContent story={story} />
         </Window>
       ))}
 
